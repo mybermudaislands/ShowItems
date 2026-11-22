@@ -61,11 +61,11 @@ ShowItems это аддон для World of Warcraft (клиенты эры Clas
 
 ## Благодарности
 
-Внешний вид окна и текстуры вкладок (`ItemRackButtons`, `ItemRackOptTabs`, `ShowItemsLock`) основаны на аддоне ItemRack (GPL-3.0). Вкладка Sets следует принципу ItemRack.
+Внешний вид окна, части его кода и текстуры вкладок (`ItemRackButtons`, `ItemRackOptTabs`, `ShowItemsLock`) основаны на аддоне ItemRack (GPL-3.0). Вкладка Sets следует принципу ItemRack. Подробности: [NOTICE.md](NOTICE.md).
 
 ## Лицензия
 
-ShowItems распространяется по лицензии MIT, см. [LICENSE](LICENSE). Три текстуры (`ItemRackButtons.blp`, `ItemRackOptTabs.tga`, `ShowItemsLock.tga`), судя по комментариям в коде, взяты из ItemRack (GPL-3.0). На них лицензия MIT НЕ распространяется. См. [NOTICE.md](NOTICE.md).
+ShowItems это свободное ПО, распространяемое по GNU General Public License версии 3 (GPL-3.0), см. [LICENSE](LICENSE). Части аддона (код виджетов в `Window.lua`, список иконок в `Sets.lua` и три текстуры) адаптированы или скопированы из ItemRack, который тоже распространяется по GPL-3.0. Copyright (C) авторы ItemRack и mybermudaislands. Подтверждения см. в [NOTICE.md](NOTICE.md).
 
 ## Разработка
 

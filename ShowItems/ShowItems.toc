@@ -2,7 +2,7 @@
 ## Title: ShowItems
 ## Notes: Track equipment slots in small movable windows. Ctrl+right click a slot in the character window to track it.
 ## Notes-ruRU: Отслеживание слотов экипировки в небольших перемещаемых окнах. Нажмите Ctrl+ПКМ по слоту в окне персонажа.
-## Version: 0.3.0
+## Version: 0.3.1
 ## Author: mybermudaislands
 ## Category: Inventory
 ## IconTexture: Interface\Icons\INV_Misc_Bag_10_Red

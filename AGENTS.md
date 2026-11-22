@@ -17,7 +17,7 @@ git config user.email 317432022+mybermudaislands@users.noreply.github.com
 - Release is tag-driven (`vX.Y.Z`). The pipeline `.github\workflows\release.yml` is disabled until the repo variable `RELEASE_ENABLED` is `true`. See `RELEASING.md`.
 - Local-only, ignored: `_old_*` folders, `*.zip`.
 - `NEXT-CHAT-PROMPT.md`: hand-off prompt for a new AI conversation (project state and the Sets tab task).
-- License: MIT (`LICENSE`). Third-party assets from ItemRack (GPL-3.0) are listed in `NOTICE.md` and are not covered by MIT.
+- License: GPL-3.0 only (`LICENSE`), because code and textures are adapted from ItemRack (GPL-3.0). Evidence and credits are in `NOTICE.md`. Keep new code compatible with GPL-3.0 and do not relicense.
 
 ## Architecture (load order from the toc)
 

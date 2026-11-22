@@ -61,11 +61,11 @@ In the addon compartment (the collapsed addon menu), left-click opens settings a
 
 ## Credits
 
-The look of the window and the tab textures (`ItemRackButtons`, `ItemRackOptTabs`, `ShowItemsLock`) are based on the ItemRack addon (GPL-3.0). The Sets tab follows the ItemRack principle.
+The look of the window, parts of its code and the tab textures (`ItemRackButtons`, `ItemRackOptTabs`, `ShowItemsLock`) are based on the ItemRack addon (GPL-3.0). The Sets tab follows the ItemRack principle. Details: [NOTICE.md](NOTICE.md).
 
 ## License
 
-ShowItems is released under the MIT license, see [LICENSE](LICENSE). Three textures (`ItemRackButtons.blp`, `ItemRackOptTabs.tga`, `ShowItemsLock.tga`) come from ItemRack (GPL-3.0), according to comments in the code. They are NOT covered by the MIT license. See [NOTICE.md](NOTICE.md).
+ShowItems is free software released under the GNU General Public License, version 3 (GPL-3.0), see [LICENSE](LICENSE). Parts of it (the widget code in `Window.lua`, the icon list in `Sets.lua` and three textures) are adapted from or copied from ItemRack, which is also licensed under GPL-3.0. Copyright (C) the ItemRack authors and mybermudaislands. See [NOTICE.md](NOTICE.md) for the evidence.
 
 ## Development
 

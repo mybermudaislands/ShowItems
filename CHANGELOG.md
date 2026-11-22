@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1] - 2026-11-22
+
+### Changed
+
+- License changed from MIT to GPL-3.0 (only). A comparison with ItemRack showed copied textures (`ItemRackButtons.blp`, `ItemRackOptTabs.tga`) and adapted code (widget templates in `Window.lua`, icon list in `Sets.lua`), so the whole addon follows the ItemRack license.
+- `LICENSE` now holds the GPL-3.0 text. `NOTICE.md`, `README.md`, `README.ru.md` and `AGENTS.md` describe the origin of the ItemRack parts. No behavior change.
+
 ## [0.3.0] - 2026-11-22
 
 Initial public release. Earlier versions (0.1.0 and 0.2.0) were local only and are not published separately.

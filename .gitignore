@@ -1,0 +1,36 @@
+# Secrets
+.env
+*.env
+*.pem
+*.key
+github-recovery-codes.txt
+opencode.jsonc*
+
+# Local backups and snapshots (git history replaces them)
+*-backup-*/
+*-backups/
+*-game-backups/
+*-baselines/
+versions/
+_old_installed_*/
+
+# AI tooling scratch and caches
+.superpowers/
+.cache/
+*.log
+*.tmp
+
+# Build output
+build/
+dist/
+*.zip
+
+# Editors
+.vscode/
+.idea/
+
+# ShowItems specific
+# Old copies of the addon and saved variables (may contain character data)
+_old_*/
+# Saved variables and WTF files
+WTF/

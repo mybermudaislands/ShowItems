@@ -1,0 +1,270 @@
+# release.yml - release pipeline for an addon repo (template).
+#
+# Copy to <repo>\.github\workflows\release.yml and set ADDON_DIR / ADDON_NAME / ADDON_TITLE
+# in the `env` block of every job (search for REPLACE_WITH_).
+#
+# Flow (modelled on the BloomBuddy pipeline):
+#   1. version    - release version from a `vMAJOR.MINOR.PATCH` tag (or, on manual
+#                   dispatch without a tag at HEAD, the latest tag with patch + 1)
+#   2. bundle     - set `## Version:` in the TOC and build <ADDON_NAME>-<version>.zip
+#                   (the addon folder sits at the zip top level, ready for AddOns\)
+#   3. release    - create the GitHub release with the zip attached
+#   4. curseforge - upload the zip to CurseForge (needs secret + variables below)
+#
+# THE PIPELINE IS DISABLED BY DEFAULT. Every job runs only when the repository
+# variable RELEASE_ENABLED is exactly 'true'. Until it is set, pushes of v* tags
+# and manual runs just show skipped jobs.
+#
+# To enable (Settings > Secrets and variables > Actions, or use `gh`):
+#   gh variable set RELEASE_ENABLED --body true          # GitHub release + zip
+# To also publish to CurseForge:
+#   gh secret set CF_API_KEY                             # CurseForge API token
+#   gh variable set CF_PROJECT_ID --body <numeric id>    # CurseForge project id
+#   gh variable set CF_GAME_VERSION_ID --body <numeric id>
+#     or CF_GAME_VERSION --body <name, e.g. 1.15.7>      # looked up by name
+# Without CF_API_KEY / CF_PROJECT_ID / a game version, the curseforge job logs a
+# warning and exits without uploading.
+# To disable again: gh variable delete RELEASE_ENABLED
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Determine version
+    if: vars.RELEASE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.determine.outputs.version }}
+      tag: ${{ steps.determine.outputs.tag }}
+      previous-tag: ${{ steps.determine.outputs.previous-tag }}
+      should-release: ${{ steps.determine.outputs.should-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: determine
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tags = @(git tag --list 'v*' 2>$null)
+          $semverTags = @($tags | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } | Sort-Object { [version]$_.TrimStart('v') })
+          $exactTag = git tag --list --points-at HEAD 'v*' 2>$null | Select-Object -First 1
+          $shouldRelease = "true"
+          if ($exactTag) {
+            if ($exactTag -notmatch '^v\d+\.\d+\.\d+$') {
+              throw "Tag $exactTag is not a valid semver tag (expected vMAJOR.MINOR.PATCH)."
+            }
+            $version = $exactTag.TrimStart('v')
+            $existing = @(gh release list --limit 1000 --json tagName --jq '.[].tagName' 2>$null)
+            if ($existing -contains $exactTag) {
+              $shouldRelease = "false"
+              Write-Host "Release $exactTag already exists - skipping."
+            }
+            $previousTag = ($semverTags | Where-Object { $_ -ne $exactTag } | Select-Object -Last 1)
+          }
+          else {
+            $latest = $semverTags | Select-Object -Last 1
+            if ($latest) {
+              $parts = $latest.TrimStart('v').Split('.')
+              $version = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
+              $previousTag = $latest
+            }
+            else {
+              $version = "0.1.0"
+              $previousTag = ""
+            }
+          }
+          "version=$version" | Out-File $env:GITHUB_OUTPUT -Append
+          "tag=v$version" | Out-File $env:GITHUB_OUTPUT -Append
+          "previous-tag=$previousTag" | Out-File $env:GITHUB_OUTPUT -Append
+          "should-release=$shouldRelease" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $version (previous tag: '$previousTag')"
+
+  bundle:
+    name: Build addon bundle
+    needs: version
+    if: vars.RELEASE_ENABLED == 'true' && needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # Folder (relative to repo root) that contains the .toc file. Use "." if the repo root is the addon.
+      ADDON_DIR: ShowItems
+      # Folder name the addon must have inside the game's AddOns directory.
+      ADDON_NAME: ShowItems
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check TOC exists
+        run: |
+          if [ -z "$(find "$ADDON_DIR" -maxdepth 1 -iname '*.toc' -print -quit)" ]; then
+            echo "::error::No .toc file found in $ADDON_DIR"
+            exit 1
+          fi
+
+      - name: Build zip
+        run: |
+          mkdir -p "build/$ADDON_NAME" dist
+          rsync -a --exclude='.git*' --exclude='.github' "$ADDON_DIR"/ "build/$ADDON_NAME/"
+          # Set the TOC version, keeping the original line endings.
+          for toc in build/"$ADDON_NAME"/*.[tT][oO][cC]; do
+            perl -pi -e 's/^## Version:.*?(\r?)$/## Version: $ENV{VERSION}$1/' "$toc"
+          done
+          (cd build && zip -r "../dist/$ADDON_NAME-$VERSION.zip" "$ADDON_NAME")
+          ls -l dist
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ needs.version.outputs.tag }}
+          path: dist/*.zip
+          retention-days: 14
+
+  release:
+    name: Create GitHub release
+    needs: [version, bundle]
+    if: vars.RELEASE_ENABLED == 'true' && needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ADDON_TITLE: ShowItems
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+      PREV_TAG: ${{ needs.version.outputs.previous-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-${{ needs.version.outputs.tag }}
+          path: dist
+
+      - name: Build release notes
+        run: |
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..HEAD"
+            SINCE="Changes since $PREV_TAG"
+          else
+            RANGE="HEAD"
+            SINCE="Initial release"
+          fi
+          {
+            echo "## $ADDON_TITLE $VERSION"
+            echo
+            echo "### $SINCE"
+            echo
+            git log --oneline --no-decorate "$RANGE" | sed 's/^/- /'
+          } > release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ZIP=$(find dist -name '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "::error::No bundle zip found in dist/"
+            exit 1
+          fi
+          gh release create "$TAG" "$ZIP" \
+            --target "$GITHUB_SHA" \
+            --title "$ADDON_TITLE $VERSION" \
+            --notes-file release-notes.md
+
+  curseforge:
+    name: Publish to CurseForge
+    needs: [version, bundle]
+    if: vars.RELEASE_ENABLED == 'true' && needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ADDON_TITLE: ShowItems
+      VERSION: ${{ needs.version.outputs.version }}
+      PREV_TAG: ${{ needs.version.outputs.previous-tag }}
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+      CF_GAME_VERSION_ID: ${{ vars.CF_GAME_VERSION_ID }}
+      CF_GAME_VERSION: ${{ vars.CF_GAME_VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-${{ needs.version.outputs.tag }}
+          path: dist
+
+      - name: Publish to CurseForge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:CF_API_KEY) {
+            Write-Host "::warning::CF_API_KEY secret not configured - skipping CurseForge publish."
+            exit 0
+          }
+          if (-not $env:CF_PROJECT_ID -or $env:CF_PROJECT_ID -eq "0") {
+            Write-Host "::warning::CF_PROJECT_ID variable not set - skipping CurseForge publish."
+            exit 0
+          }
+          if (-not $env:CF_GAME_VERSION_ID -and -not $env:CF_GAME_VERSION) {
+            Write-Host "::warning::Neither CF_GAME_VERSION_ID nor CF_GAME_VERSION is set - skipping CurseForge publish."
+            exit 0
+          }
+
+          $headers = @{ "x-api-token" = $env:CF_API_KEY }
+          if ($env:CF_GAME_VERSION_ID) {
+            $gameVersionId = [int]$env:CF_GAME_VERSION_ID
+          }
+          else {
+            $versions = Invoke-RestMethod -Uri "https://wow.curseforge.com/api/game/wow/versions" -Headers $headers
+            $match = $versions | Where-Object { $_.name -eq $env:CF_GAME_VERSION } | Select-Object -First 1
+            if (-not $match) { throw "No CurseForge game version named '$($env:CF_GAME_VERSION)'." }
+            $gameVersionId = [int]$match.id
+          }
+          Write-Host "CurseForge game version id: $gameVersionId"
+
+          if ($env:PREV_TAG) {
+            $commits = @(git log --oneline --no-decorate "$env:PREV_TAG..HEAD")
+          }
+          else {
+            $commits = @(git log --oneline --no-decorate)
+          }
+          $changelog = "# $env:ADDON_TITLE $env:VERSION`n`n" + (($commits | ForEach-Object { "- $_" }) -join "`n")
+
+          # The CurseForge API expects string enums ("release"/"markdown") and the
+          # file as a FileInfo object (a string path is sent as a plain form field).
+          $metadata = @{
+            displayName   = "$env:ADDON_TITLE v$env:VERSION"
+            gameVersions  = @($gameVersionId)
+            releaseType   = "release"
+            changelog     = $changelog
+            changelogType = "markdown"
+          } | ConvertTo-Json -Depth 5
+
+          $zip = Get-ChildItem dist -Recurse -Filter *.zip | Select-Object -First 1
+          if (-not $zip) { throw "No bundle zip found in dist/." }
+          $result = Invoke-RestMethod -Method Post `
+            -Uri "https://wow.curseforge.com/api/projects/$($env:CF_PROJECT_ID)/upload-file" `
+            -Headers $headers `
+            -Form @{ metadata = $metadata; file = Get-Item $zip.FullName }
+          Write-Host "Uploaded to CurseForge: $($result.displayName) (file id $($result.id))"

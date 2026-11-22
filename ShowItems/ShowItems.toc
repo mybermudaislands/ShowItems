@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: ShowItems
+## Notes: Track equipment slots in small movable windows. Ctrl+right click a slot in the character window to track it.
+## Notes-ruRU: Отслеживание слотов экипировки в небольших перемещаемых окнах. Нажмите Ctrl+ПКМ по слоту в окне персонажа.
+## Version: 0.3.0
+## Author: mybermudaislands
+## Category: Inventory
+## IconTexture: Interface\Icons\INV_Misc_Bag_10_Red
+## AddonCompartmentFunc: ShowItems_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: ShowItems_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: ShowItems_OnAddonCompartmentLeave
+## SavedVariables: ShowItemsDB
+## SavedVariablesPerCharacter: ShowItemsCharDB
+
+Core.lua
+Slots.lua
+Trackers.lua
+Menu.lua
+ItemTip.lua
+Flyout.lua
+Favorites.lua
+CharacterMenu.lua
+Window.lua
+Options.lua
+Sets.lua
+Profiles.lua
+Minimap.lua
